@@ -1,0 +1,13 @@
+schema: spec-driven
+
+context: |
+  项目: Meshy text-to-3d Web 应用（独立项目，与 HugeGraph 无关）
+  技术栈: Python 3.10+, venv 虚拟环境, FastAPI + Uvicorn (后端), Jinja2 + 原生 HTML/CSS/JS (前端)
+  外部 API: Meshy text-to-3d API (https://api.meshy.ai/openapi/v2/text-to-3d)
+    - 两步工作流: preview (生成无纹理 mesh) -> refine (贴图)，共用 POST /openapi/v2/text-to-3d，用 mode 区分
+    - 认证: Authorization: Bearer ${MESHY_API_KEY}，API key 从环境变量读取，禁止硬编码
+    - 任务异步: 创建后通过 GET /:id 轮询 或 GET /:id/stream (SSE) 获取进度
+    - 输出: model_urls (glb/obj/fbx/stl/usdz/3mf) + texture_urls (base_color 及 PBR: metallic/normal/roughness/emission)
+    - 状态: PENDING / IN_PROGRESS / SUCCEEDED / FAILED / CANCELED
+  领域: 用户在网页输入 prompt 提交 text-to-3d 任务，实时查看进度与缩略图，完成后下载 3D 模型
+  约定: 不创建测试脚本和使用指南文档；API key 走环境变量；时间戳为毫秒级

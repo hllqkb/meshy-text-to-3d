@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meshy AI - 文本生成 3D 模型</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" stroke="#00D2A8" stroke-width="1.5" fill="none"/>
+                    <path d="M14 8L20 11V17L14 20L8 17V11L14 8Z" fill="#00D2A8" fill-opacity="0.2" stroke="#00D2A8" stroke-width="1"/>
+                    <circle cx="14" cy="14" r="2.5" fill="#00D2A8"/>
+                </svg>
+                <span class="logo-text">meshy<span class="logo-accent">.ai</span></span>
+            </a>
+            <div class="nav-links">
+                <a href="https://www.meshy.ai/zh/docs" target="_blank" class="nav-link">文档</a>
+                <a href="https://www.meshy.ai/zh/pricing" target="_blank" class="nav-link">定价</a>
+            </div>
+            <div class="nav-balance">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00D2A8" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8M8 14h8"/>
+                </svg>
+                <span class="balance-num" id="balance-value">--</span>
+                <span class="balance-unit">积分</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-bg-orb orb1"></div>
+        <div class="hero-bg-orb orb2"></div>
+        <div class="hero-content">
+            <div class="hero-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#00D2A8"><circle cx="12" cy="12" r="10"/></svg>
+                AI 驱动 · 60 秒生成
+            </div>
+            <h1 class="hero-title">用文字描述<br>创造任何 3D 模型</h1>
+            <p class="hero-subtitle">输入一句话，Meshy AI 即可生成可直接用于 3D 打印、游戏、AR/VR 的三维模型</p>
+        </div>
+    </section>
+
+    <!-- Main Generator -->
+    <main class="main-content">
+
+        <!-- Generator Card -->
+        <div class="gen-card">
+            <div class="gen-card-header">
+                <div class="gen-card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D2A8" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    创建新模型
+                </div>
+            </div>
+
+            <!-- Prompt Input -->
+            <div class="prompt-wrap">
+                <textarea
+                    id="prompt"
+                    class="prompt-input"
+                    rows="3"
+                    placeholder="描述你想要创建的 3D 模型，例如：一只穿着宇航服的卡通猫咪，举着爪子打招呼"
+                    maxlength="600"
+                ></textarea>
+                <div class="char-bar">
+                    <div class="char-bar-fill" id="char-bar-fill"></div>
+                </div>
+            </div>
+
+            <!-- Quick Examples -->
+            <div class="examples">
+                <span class="examples-label">试试：</span>
+                <button class="example-chip" data-prompt="一只穿着宇航服的卡通猫咪">宇航猫</button>
+                <button class="example-chip" data-prompt="一株多肉植物，圆润的叶片，深绿色">多肉植物</button>
+                <button class="example-chip" data-prompt="未来风格摩托车，半透明车身，霓虹蓝色">科幻摩托</button>
+            </div>
+
+            <!-- Advanced Options Toggle -->
+            <button class="toggle-btn" id="params-toggle">
+                <span>高级选项</span>
+                <svg id="params-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <path d="M4 6l4 4 4-4"/>
+                </svg>
+            </button>
+
+            <!-- Advanced Options -->
+            <div class="params-panel" id="params-panel">
+                <div class="param-grid">
+                    <div class="param-item">
+                        <label class="param-label">AI 模型</label>
+                        <select id="ai-model" class="param-select">
+                            <option value="latest">Latest (最新)</option>
+                            <option value="meshy-6">Meshy-6</option>
+                            <option value="meshy-5">Meshy-5</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label class="param-label">拓扑结构</label>
+                        <select id="topology" class="param-select">
+                            <option value="triangle">三角网格</option>
+                            <option value="quad">四边网格</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label class="param-label">艺术风格</label>
+                        <select id="art-style" class="param-select">
+                            <option value="realistic">写实</option>
+                            <option value="low-poly">Low Poly</option>
+                            <option value="cartoon">卡通</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label class="param-label">模型类型</label>
+                        <select id="model-type" class="param-select">
+                            <option value="standard">标准</option>
+                            <option value="lowpoly">低多边形</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label class="param-label">目标面数</label>
+                        <input type="number" id="target-polycount" class="param-input" value="30000" min="1000" max="100000">
+                    </div>
+                </div>
+                <div class="param-toggles">
+                    <label class="toggle-chip">
+                        <input type="checkbox" id="should-remesh" checked>
+                        <span class="toggle-chip-label">重新网格化</span>
+                    </label>
+                    <label class="toggle-chip">
+                        <input type="checkbox" id="enable-pbr">
+                        <span class="toggle-chip-label">启用 PBR</span>
+                    </label>
+                </div>
+                <div class="param-formats">
+                    <span class="param-label">输出格式</span>
+                    <div class="format-row">
+                        <label class="fmt-chip"><input type="checkbox" class="target-format" value="glb" checked><span>GLB</span></label>
+                        <label class="fmt-chip"><input type="checkbox" class="target-format" value="fbx" checked><span>FBX</span></label>
+                        <label class="fmt-chip"><input type="checkbox" class="target-format" value="usdz" checked><span>USDZ</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button id="btn-preview" class="btn-generate">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 3l14 9-14 9 14 9V3z"/>
+                </svg>
+                生成 3D 模型
+            </button>
+        </div>
+
+        <!-- Progress Card -->
+        <div class="result-card" id="progress-card" style="display:none;">
+            <div class="result-card-inner">
+                <div class="result-spinner">
+                    <svg viewBox="0 0 50 50" width="52" height="52">
+                        <circle cx="25" cy="25" r="20" stroke="#1a1a1a" stroke-width="3.5" fill="none"/>
+                        <circle cx="25" cy="25" r="20" stroke="#00D2A8" stroke-width="3.5" fill="none"
+                            stroke-dasharray="125.6" stroke-dashoffset="94"
+                            stroke-linecap="round" class="spin-arc"/>
+                    </svg>
+                </div>
+                <div class="result-info">
+                    <div class="result-status" id="progress-status">正在生成...</div>
+                    <div class="result-whimsy" id="progress-whimsy"></div>
+                </div>
+                <div class="result-progress">
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <span class="progress-pct" id="progress-percent">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Card -->
+        <div class="result-card" id="result-card" style="display:none;">
+            <div class="result-card-inner">
+                <div class="result-top">
+                    <div class="result-title-row">
+                        <div class="result-badge-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#00D2A8"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="none" stroke="#00D2A8" stroke-width="2"/></svg>
+                        </div>
+                        <span class="result-badge-text" id="result-badge-text">生成完成</span>
+                    </div>
+                    <button class="btn-close" id="btn-close-result" title="关闭">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Thumbnail -->
+                <div class="preview-area">
+                    <img id="thumbnail-img" src="" alt="预览图" style="display:none;" class="preview-img">
+                    <div class="preview-placeholder" id="preview-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="1.2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <p>预览图将在生成完成后显示</p>
+                    </div>
+                </div>
+
+                <!-- Download Buttons -->
+                <div class="download-area" id="download-area">
+                    <div class="download-label">下载模型</div>
+                    <div class="download-btns" id="download-btns"></div>
+                </div>
+
+                <!-- Refine Section -->
+                <div class="refine-area" id="refine-area">
+                    <div class="refine-header">
+                        <div class="refine-title">精修纹理</div>
+                    </div>
+                    <div class="refine-options">
+                        <label class="toggle-chip"><input type="checkbox" id="refine-enable-pbr"><span class="toggle-chip-label">启用 PBR</span></label>
+                        <label class="toggle-chip"><input type="checkbox" id="refine-hd"><span class="toggle-chip-label">高清纹理</span></label>
+                    </div>
+                    <input type="text" id="texture-prompt" class="refine-prompt"
+                        placeholder="描述想要的纹理风格（可选），例如：磨砂金属质感">
+                    <button id="btn-refine" class="btn-refine" disabled>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                        </svg>
+                        生成精修纹理
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="history-card">
+            <div class="history-header">
+                <div class="history-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    历史任务
+                </div>
+                <span class="history-count" id="history-count">0</span>
+            </div>
+            <div class="task-list" id="task-list">
+                <div class="task-empty" id="task-empty">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    <p>暂无任务记录</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
