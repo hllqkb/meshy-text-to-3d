@@ -12,7 +12,11 @@ class Settings:
 
     MESHY_API_KEY: str = ""
     MESHY_API_BASE: str = "https://api.meshy.ai"
-    MESHY_MODEL: str = "latest"  # meshy-4/meshy-5/meshy-6/latest
+    MESHY_MODEL: str = "latest"
+
+    MIMO_API_KEY: str = ""
+    MIMO_API_BASE: str = "https://api.xiaomimimo.com/v1"
+    MIMO_MODEL: str = "mimo-v2.5"
 
     def __init__(self):
         global _ENV_LOADED
@@ -24,6 +28,10 @@ class Settings:
         self.MESHY_API_KEY = os.getenv("MESHY_API_KEY", "")
         self.MESHY_API_BASE = os.getenv("MESHY_API_BASE", "https://api.meshy.ai")
         self.MESHY_MODEL = os.getenv("MESHY_MODEL", "latest")
+
+        self.MIMO_API_KEY = os.getenv("MIMO_API_KEY", "")
+        self.MIMO_API_BASE = os.getenv("MIMO_API_BASE", "https://api.xiaomimimo.com/v1")
+        self.MIMO_MODEL = os.getenv("MIMO_MODEL", "mimo-v2.5")
 
         if not self.MESHY_API_KEY:
             print("ERROR: MESHY_API_KEY is required. Please set it in .env file.", flush=True)

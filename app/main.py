@@ -11,9 +11,11 @@ from fastapi.templating import Jinja2Templates
 from app.config import settings
 from app.db import delete_task as db_delete_task
 from app.db import get_task as db_get_task
+from app.db import get_task_by_refine_id as db_get_task_by_refine_id
 from app.db import init_db, insert_task, list_tasks, update_task
 from app.meshy_client import MeshyClient, MeshyError
-from app.schemas import CreatePreviewRequest, CreateRefineRequest, ErrorResponse, TaskResponse
+from app.mimo_client import MimoClient
+from app.schemas import CreatePreviewRequest, CreateRefineRequest, ErrorResponse, TaskResponse, PolishRequest, PolishResponse
 from app.storage import cleanup_task_storage, download_task_assets
 
 logging.basicConfig(
@@ -73,6 +75,17 @@ async def create_preview_task(req: CreatePreviewRequest):
         await client.close()
 
 
+@app.post("/api/polish")
+async def polish_prompt(req: PolishRequest):
+    """使用 AI 润色提示词。"""
+    client = MimoClient()
+    try:
+        polished = await client.polish_prompt(req.text)
+        return PolishResponse(original=req.text, polished=polished)
+    finally:
+        await client.close()
+
+
 @app.post("/api/tasks/{task_id}/refine")
 async def create_refine_task(task_id: str, req: CreateRefineRequest):
     record = db_get_task(task_id)
@@ -102,20 +115,29 @@ async def create_refine_task(task_id: str, req: CreateRefineRequest):
 @app.get("/api/tasks/{task_id}")
 async def get_task(task_id: str):
     record = db_get_task(task_id)
+    is_refine_task = False
+    # 如果 task_id 不是主键，尝试通过 refine_task_id 查找
+    if not record:
+        record = db_get_task_by_refine_id(task_id)
+        if record:
+            is_refine_task = True
     if not record:
         raise HTTPException(status_code=404, detail="任务不存在")
 
     # 合并本地数据与 Meshy 实时状态
     client = MeshyClient()
     try:
-        remote = await client.get_task(task_id)
+        # 如果是精修任务，用 refine_task_id 查询 Meshy API
+        meshy_task_id = record.get("refine_task_id") if is_refine_task else task_id
+        remote = await client.get_task(meshy_task_id)
         remote_task = remote.get("result", remote)
         status = remote_task.get("status", record["status"])
         progress = remote_task.get("progress", record["progress"])
 
-        # 更新 DB
+        # 更新 DB - 始终用数据库主键
+        db_id = record.get("id", task_id)
         if status != record["status"] or progress != record["progress"]:
-            update_task(task_id, status=status, progress=progress)
+            update_task(db_id, status=status, progress=progress)
 
         local_files = {}
         if record.get("local_files"):
@@ -131,11 +153,12 @@ async def get_task(task_id: str):
             prompt=record.get("prompt") or "",
             thumbnail_url=remote_task.get("thumbnail_url") or "",
             model_urls=remote_task.get("model_urls") or {},
-            texture_urls=remote_task.get("texture_urls") or {},
+            texture_urls=remote_task.get("texture_urls") or None,
             preview_task_id=record.get("preview_task_id") or "",
             refine_task_id=record.get("refine_task_id") or "",
             local_files=local_files,
             created_at=record.get("created_at") or 0,
+            is_refined=bool(record.get("refine_task_id")),
         )
     finally:
         await client.close()
@@ -144,8 +167,14 @@ async def get_task(task_id: str):
 @app.get("/api/tasks/{task_id}/stream")
 async def stream_task(task_id: str):
     record = db_get_task(task_id)
+    # 如果 task_id 不是主键，尝试通过 refine_task_id 查找
+    if not record:
+        record = db_get_task_by_refine_id(task_id)
     if not record:
         raise HTTPException(status_code=404, detail="任务不存在")
+
+    # 使用数据库记录的主键 ID，而不是传入的 task_id
+    db_id = record.get("id", task_id)
 
     async def event_generator():
         client = MeshyClient()
@@ -155,15 +184,19 @@ async def stream_task(task_id: str):
                 progress = event.get("progress", 0)
 
                 if status:
-                    update_task(task_id, status=status, progress=progress)
+                    # 使用数据库主键 ID 更新记录
+                    update_task(db_id, status=status, progress=progress)
 
                 # SUCCEEDED 时触发落盘
                 if status == "SUCCEEDED":
                     model_urls = event.get("model_urls") or {}
-                    texture_urls = event.get("texture_urls") or {}
+                    texture_urls = event.get("texture_urls") or None
                     if model_urls:
+                        # 如果是精修任务，使用精修任务 ID 做目录名，db_id 更新数据库
+                        storage_id = record.get("refine_task_id") if record.get("refine_task_id") else db_id
+                        logger.info(f"Downloading assets for task {storage_id}, db_id={db_id}, model_urls: {list(model_urls.keys())}")
                         asyncio.create_task(
-                            download_task_assets(client, task_id, model_urls, texture_urls)
+                            download_task_assets(client, db_id, model_urls, texture_urls, storage_id=storage_id)
                         )
 
                 yield f"data: {json.dumps(event)}\n\n"
@@ -188,6 +221,9 @@ async def stream_task(task_id: str):
 @app.get("/api/tasks/{task_id}/download")
 async def download_asset(task_id: str, format: str):
     record = db_get_task(task_id)
+    # 如果 task_id 不是主键，尝试通过 refine_task_id 查找
+    if not record:
+        record = db_get_task_by_refine_id(task_id)
     if not record or not record.get("local_files"):
         raise HTTPException(status_code=404, detail="文件未找到")
 
@@ -242,6 +278,7 @@ async def get_tasks():
                 "prompt": r.get("prompt", ""),
                 "created_at": r.get("created_at", 0),
                 "local_files": local_files,
+                "is_refined": bool(r.get("refine_task_id")),
             }
         )
     return result
