@@ -94,6 +94,14 @@ def get_task(task_id: str) -> Optional[dict]:
         return dict(row)
 
 
+def get_task_by_refine_id(refine_task_id: str) -> Optional[dict]:
+    with _get_conn() as conn:
+        row = conn.execute("SELECT * FROM tasks WHERE refine_task_id = ?", (refine_task_id,)).fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+
 def list_tasks() -> list[dict]:
     with _get_conn() as conn:
         rows = conn.execute(

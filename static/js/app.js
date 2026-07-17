@@ -22,6 +22,7 @@
         currentTaskId: null,
         eventSource: null,
         pollInterval: null,
+        isRefineMode: false,
     };
 
     var $ = function (id) { return document.getElementById(id); };
@@ -55,6 +56,9 @@
         var refineBtn = $("btn-refine");
         if (refineBtn) refineBtn.addEventListener("click", onRefineSubmit);
 
+        var polishBtn = $("btn-polish");
+        if (polishBtn) polishBtn.addEventListener("click", onPolishClick);
+
         $("prompt").addEventListener("input", function () {
             var len = $("prompt-len");
             var bar = $("char-bar-fill");
@@ -85,6 +89,39 @@
             if (card) card.style.display = "none";
             if (progress) progress.style.display = "none";
             cleanup();
+        });
+    }
+
+    /* === AI Polish === */
+    function onPolishClick() {
+        var input = $("prompt");
+        var btn = $("btn-polish");
+        var text = input.value.trim();
+        if (!text) { alert("请先输入描述"); return; }
+
+        btn.disabled = true;
+        btn.classList.add("spinning");
+
+        fetch("/api/polish", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: text }),
+        })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+        .then(function (res) {
+            if (res.ok && res.body.polished) {
+                input.value = res.body.polished;
+                input.dispatchEvent(new Event("input"));
+            } else {
+                alert("润色失败：" + (res.body && res.body.error || "未知错误"));
+            }
+        })
+        .catch(function (e) {
+            alert("润色请求失败：" + e.message);
+        })
+        .finally(function () {
+            btn.disabled = false;
+            btn.classList.remove("spinning");
         });
     }
 
@@ -129,6 +166,7 @@
                 return;
             }
             state.currentTaskId = res.body.id;
+            state.isRefineMode = false;
             updateUrl(res.body.id);
             startStream(res.body.id);
         })
@@ -221,7 +259,7 @@
             if (ph) ph.style.display = "none";
         }
 
-        var isRefine = !!data.refine_task_id;
+        var isRefine = state.isRefineMode;
         var refineArea = $("refine-area");
         if (refineArea) refineArea.style.display = isRefine ? "none" : "";
         var refineBtn = $("btn-refine");
@@ -271,7 +309,10 @@
                 stopWhimsy();
                 return;
             }
-            startStream(state.currentTaskId);
+            // 精修任务有新的 refine_id，需要切换到监听这个新任务的流
+            state.currentTaskId = res.body.id;
+            state.isRefineMode = true;
+            startStream(res.body.id);
         })
         .catch(function (e) {
             alert("精修失败：" + e.message);
@@ -351,6 +392,7 @@
 
     function restoreTask(taskId) {
         state.currentTaskId = taskId;
+        state.isRefineMode = false;
         updateUrl(taskId);
         cleanup();
 

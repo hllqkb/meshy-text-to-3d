@@ -43,6 +43,27 @@ class CreateRefineRequest(BaseModel):
     texture_richness: str = Field(default="high", description="贴图丰富度")
 
 
+class PolishRequest(BaseModel):
+    """AI 润色请求参数。"""
+
+    text: str = Field(..., max_length=600, description="原始提示词")
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("text cannot be empty")
+        return v
+
+
+class PolishResponse(BaseModel):
+    """AI 润色响应。"""
+
+    original: str
+    polished: str
+
+
 class TaskResponse(BaseModel):
     """任务响应模型。"""
 
@@ -52,12 +73,13 @@ class TaskResponse(BaseModel):
     prompt: str = ""
     thumbnail_url: str = ""
     model_urls: dict[str, str] = Field(default_factory=dict)
-    texture_urls: dict[str, str] | None = Field(default=None)
+    texture_urls: list[dict[str, str]] | dict[str, str] | None = Field(default=None)
     preview_task_id: str = ""
     refine_task_id: str = ""
     local_files: dict[str, str] = Field(default_factory=dict)
     created_at: int = 0
     error_message: str = ""
+    is_refined: bool = False
 
 
 class ErrorResponse(BaseModel):

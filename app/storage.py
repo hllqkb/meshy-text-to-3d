@@ -18,16 +18,20 @@ def ensure_storage_dir():
 
 async def download_task_assets(
     client: MeshyClient,
-    task_id: str,
+    db_id: str,
     model_urls: dict,
-    texture_urls: dict,
+    texture_urls: dict | list | None = None,
+    storage_id: str | None = None,
 ) -> dict:
-    """下载任务资产到本地 storage/<task_id>/ 目录。
+    """下载任务资产到本地 storage/<storage_id>/ 目录。
 
+    db_id: 数据库主键，用于更新 local_files
+    storage_id: 存储目录名，默认与 db_id 相同
     返回 {format: local_path} 映射。下载失败的保留原始 URL 作为兜底。
     """
+    storage_id = storage_id or db_id
     ensure_storage_dir()
-    task_dir = STORAGE_DIR / task_id
+    task_dir = STORAGE_DIR / storage_id
     task_dir.mkdir(parents=True, exist_ok=True)
 
     local_files: dict[str, str] = {}
@@ -70,7 +74,7 @@ async def download_task_assets(
             local_files[key] = original_url
             logger.warning("Asset download failed for %s, keeping URL: %s", key, original_url)
 
-    update_task(task_id, local_files=local_files)
+    update_task(db_id, local_files=local_files)
     return local_files
 
 
